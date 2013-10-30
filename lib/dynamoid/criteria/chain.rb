@@ -145,6 +145,7 @@ module Dynamoid #:nodoc:
       end
 
       private
+      
 
       # The actual records referenced by the association.
       #
@@ -153,6 +154,7 @@ module Dynamoid #:nodoc:
       # @since 0.2.0
       def records
         results = if range?
+          
           records_with_range
         elsif index
           records_with_index
@@ -188,7 +190,7 @@ module Dynamoid #:nodoc:
       # @return [Set] a Set containing the IDs from the index.
       def ids_from_index
         if index.range_key?
-          Dynamoid::Adapter.query(index.table_name, index_query.merge(consistent_opts)).inject(Set.new) do |all, record|
+          Dynamoid::Adapter.query(index.table_name, index_query.merge(consistent_opts).merge(query_index_opts)).inject(Set.new) do |all, record|
             all + Set.new(record[:ids])
           end
         else
@@ -251,7 +253,7 @@ module Dynamoid #:nodoc:
         val = query[key]
 
         return { :range_value => query[key] } if query[key].is_a?(Range)
-
+        
         case key.to_s.split('.').last
         when 'gt'
           { :range_greater_than => val.to_f }
@@ -304,7 +306,13 @@ module Dynamoid #:nodoc:
         end
         key
       end
-
+      def query_index_opts
+        opts = {}
+        opts[:limit] = @limit if @limit
+        opts[:next_token] = start_key if @start
+        opts[:scan_index_forward] = @scan_index_forward if @scan_index_forward == false
+        opts
+      end
       def query_opts
         opts = {}
         opts[:limit] = @limit if @limit

@@ -60,15 +60,17 @@ module Dynamoid #:nodoc:
       # @return [Hash] a hash with the keys :hash_value and :range_value
       #
       # @since 0.2.0
+      # this function doesn't work. what it should do is select the old index removeit and then add the id to the new index
+      # its just looking for changed_attributes
       def values(attrs, changed_attributes = false)
+        changed_hash = {}
         if changed_attributes
-          hash = {}
-          attrs.changes.each {|k, v| hash[k.to_sym] = (v.first || v.last)}
-          attrs = hash
+          return changed_hash if (!attrs.changed?)
+          attrs.changes.each {|k, v| changed_hash[k.to_sym] = (v.first || v.last)}
         end
         attrs = attrs.send(:attributes) if attrs.respond_to?(:attributes)
         {}.tap do |hash|
-          hash[:hash_value] = hash_keys.collect{|key| attrs[key]}.join('.')
+          hash[:hash_value] = hash_keys.collect{|key| (if changed_hash[key]; changed_hash[key]; else attrs[key]; end)}.join('.')
           hash[:range_value] = range_keys.inject(0.0) {|sum, key| sum + attrs[key].to_f} if self.range_key?
         end
       end

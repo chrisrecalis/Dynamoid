@@ -219,7 +219,7 @@ module Dynamoid
       # @since 0.2.0
       def query(table_name, opts = {})
         table = get_table(table_name)
-
+        Rails.logger.debug(opts)
         Enumerator.new do |yielder|
           consistent_opts = { :consistent_read => opts[:consistent_read] || false }
           if table.composite_key?
