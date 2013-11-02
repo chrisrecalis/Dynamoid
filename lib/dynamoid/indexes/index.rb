@@ -97,7 +97,7 @@ module Dynamoid #:nodoc:
         return true if values[:hash_value].blank? || (!values[:range_value].nil? && values[:range_value].blank?)
         existing = Dynamoid::Adapter.read(self.table_name, values[:hash_value], { :range_key => values[:range_value]})
         return true unless existing && existing[:ids] && existing[:ids].include?(obj.id)
-        Dynamoid::Adapter.write(self.table_name, {:id => values[:hash_value], :ids => (existing[:ids] - Set[obj.id]), :range => values[:range_value]})
+        Dynamoid::Adapter.write(self.table_name, {:id => values[:hash_value], :ids => (existing[:ids] - Set[obj.hash_key]), :range => values[:range_value]})
       end
       
     end
