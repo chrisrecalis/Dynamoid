@@ -65,15 +65,14 @@ module Dynamoid #:nodoc:
         changed_hash = {}
         if changed_attributes
           changed_attrs = attrs.changes.delete_if {|k,v| v.first == v.last}
-          changed_attrs.delete("updated_at") if !self.hash_keys.include?(:updated_at)
-          return changed_hash if (changed_attrs.empty?)
-          return changed_hash if !(self.hash_keys.map(&:to_s).to_set.subset? attrs.changed.to_set)
+          changed = changed_attrs.map{|k,v| k}.to_set
+          return changed_hash if !(!(self.hash_keys.map(&:to_s).to_set & changed).empty? || !(self.range_keys.map(&:to_s).to_set & changed).empty?)
           changed_attrs.each {|k, v| changed_hash[k.to_sym] = (v.first || v.last)}
         end
         attrs = attrs.send(:attributes) if attrs.respond_to?(:attributes)
         {}.tap do |hash|
           hash[:hash_value] = hash_keys.collect{|key| (if changed_hash[key]; changed_hash[key]; else attrs[key]; end)}.join('.')
-          hash[:range_value] = range_keys.inject(0.0) {|sum, key| sum + attrs[key].to_f} if self.range_key?
+          hash[:range_value] = range_keys.inject(0.0) {|sum, key| sum + if changed_hash[key]; changed_hash[key].to_f; else attrs[key].to_f; end} if self.range_key?
         end
       end
       
