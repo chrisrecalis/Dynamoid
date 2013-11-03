@@ -66,13 +66,17 @@ module Dynamoid #:nodoc:
         if changed_attributes
           changed_attrs = attrs.changes.delete_if {|k,v| v.first == v.last}
           changed = changed_attrs.map{|k,v| k}.to_set
-          return changed_hash if !(!(self.hash_keys.map(&:to_s).to_set & changed).empty? || !(self.range_keys.map(&:to_s).to_set & changed).empty?)
+          if !self.range_keys.nil?
+            return changed_hash if !(!(self.hash_keys.map(&:to_s).to_set & changed).empty? || !(self.range_keys.map(&:to_s).to_set & changed).empty?)
+          else 
+            return changed_hash if !(!(self.hash_keys.map(&:to_s).to_set & changed).empty?)
+          end
           changed_attrs.each {|k, v| changed_hash[k.to_sym] = (v.first || v.last)}
         end
         attrs = attrs.send(:attributes) if attrs.respond_to?(:attributes)
         {}.tap do |hash|
-          hash[:hash_value] = hash_keys.collect{|key| (if changed_hash[key]; changed_hash[key]; else attrs[key]; end)}.join('.')
-          hash[:range_value] = range_keys.inject(0.0) {|sum, key| sum + if changed_hash[key]; changed_hash[key].to_f; else attrs[key].to_f; end} if self.range_key?
+          hash[:hash_value] = self.hash_keys.collect{|key| (if changed_hash[key]; changed_hash[key]; else attrs[key]; end)}.join('.')
+          hash[:range_value] = self.range_keys.inject(0.0) {|sum, key| sum + if changed_hash[key]; changed_hash[key].to_f; else attrs[key].to_f; end} if self.range_key?
         end
       end
       
