@@ -54,19 +54,21 @@ module Dynamoid #:nodoc:
       # Given either an object or a list of attributes, generate a hash key and a range key for the index. Optionally pass in 
       # true to changed_attributes for a list of all the object's dirty attributes in convenient index form (for deleting stale 
       # information from the indexes).
+      # if changed_attributes is true we only check to see if the attributes that have changed correspond to the current index
       #
       # @param [Object] attrs either an object that responds to :attributes, or a hash of attributes
       #
       # @return [Hash] a hash with the keys :hash_value and :range_value
       #
       # @since 0.2.0
-      # this function doesn't work. what it should do is select the old index removeit and then add the id to the new index
-      # its just looking for changed_attributes
       def values(attrs, changed_attributes = false)
         changed_hash = {}
         if changed_attributes
-          return changed_hash if (!attrs.changed?)
-          attrs.changes.each {|k, v| changed_hash[k.to_sym] = (v.first || v.last)}
+          changed_attrs = attrs.changes.delete_if {|k,v| v.first == v.last}
+          changed_attrs.delete("updated_at") if !self.hash_keys.include?(:updated_at)
+          return changed_hash if (changed_attrs.empty?)
+          return changed_hash if !(self.hash_keys.map(&:to_s).to_set.subset? attrs.changed.to_set)
+          changed_attrs.each {|k, v| changed_hash[k.to_sym] = (v.first || v.last)}
         end
         attrs = attrs.send(:attributes) if attrs.respond_to?(:attributes)
         {}.tap do |hash|
@@ -77,15 +79,14 @@ module Dynamoid #:nodoc:
       
       # Save an object to this index, merging it with existing ids if there's already something present at this index location.
       # First, though, delete this object from its old indexes (so the object isn't listed in an erroneous index).
-      #
+      # We only want to save the object if the values for the index has changed
       # @since 0.2.0
       def save(obj)
-        self.delete(obj, true)
+        return true if !obj.new_record? &&  values(obj,true).empty?
+        self.delete(obj, true) if !obj.new_record? && obj.changed?
         values = values(obj)
         return true if values[:hash_value].blank? || (!values[:range_value].nil? && values[:range_value].blank?)
-        existing = Dynamoid::Adapter.read(self.table_name, values[:hash_value], { :range_key => values[:range_value] })
-        ids = ((existing and existing[:ids]) or Set.new)
-        Dynamoid::Adapter.write(self.table_name, {:id => values[:hash_value], :ids => ids.merge([obj.hash_key]), :range => values[:range_value]})
+        Dynamoid::Adapter.add_index_value(self.table_name,obj,{:id => values[:hash_value], :range_key => values[:range_value]})  
       end
 
       # Delete an object from this index, preserving existing ids if there are any, and failing gracefully if for some reason the 
@@ -95,9 +96,7 @@ module Dynamoid #:nodoc:
       def delete(obj, changed_attributes = false)
         values = values(obj, changed_attributes)
         return true if values[:hash_value].blank? || (!values[:range_value].nil? && values[:range_value].blank?)
-        existing = Dynamoid::Adapter.read(self.table_name, values[:hash_value], { :range_key => values[:range_value]})
-        return true unless existing && existing[:ids] && existing[:ids].include?(obj.hash_key)
-        Dynamoid::Adapter.write(self.table_name, {:id => values[:hash_value], :ids => (existing[:ids] - Set[obj.hash_key]), :range => values[:range_value]})
+        Dynamoid::Adapter.delete_index_value(self.table_name,obj,{:id => values[:hash_value], :range_key => values[:range_value]})
       end
       
     end

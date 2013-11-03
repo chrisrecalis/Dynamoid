@@ -223,6 +223,34 @@ module Dynamoid
       return benchmark(method, *args) {adapter.send(method, *args, &block)} if @adapter.respond_to?(method)
       super
     end
+    # ADD the obj to the set of keys for a given index
+    # We call this instead of reading existing ids and putting the item back. This ensures if multiple calls 
+    # are updating the objects index the obj hash key isn't lost on an overwrite
+    # partitioning is currently not supported we call the old method to deal with it
+    def add_index_value(table_name, obj, opts = {})
+      if Dynamoid::Config.partitioning?
+       # existing = Dynamoid::Adapter.read(table_name, obj.hash_key, { :range_key => values[:range_value] })
+        #ids = ((existing and existing[:ids]) or Set.new)
+        #Dynamoid::Adapter.write(self.table_name, {:id => values[:hash_value], :ids => ids.merge([obj.hash_key]), :range => values[:range_value]})
+      else
+        key = opts.delete(:id)
+        add_block = Proc.new{|item| item.add(:ids => ["#{obj.hash_key}"])}
+        adapter.update_item(table_name, key, opts, &add_block)
+      end
+    end
+
+    # DELETE the obj from the the set of keys for a given index
+    def delete_index_value(table_name, obj, opts = {})
+      if Dynamoid::Config.partitioning?
+        #existing = Dynamoid::Adapter.read(self.table_name, values[:hash_value], { :range_key => values[:range_value]})
+        #return true unless existing && existing[:ids] && existing[:ids].include?(obj.hash_key)
+        #Dynamoid::Adapter.write(self.table_name, {:id => values[:hash_value], :ids => (existing[:ids] - Set[obj.hash_key]), :range => values[:range_value]})
+      else
+        key = opts.delete(:id)
+        delete_block = Proc.new{|item| item.delete(:ids => ["#{obj.hash_key}"])}
+        adapter.update_item(table_name, key, opts, &delete_block)
+      end
+    end
     
     # Query the DynamoDB table. This employs DynamoDB's indexes so is generally faster than scanning, but is
     # only really useful for range queries, since it can only find by one hash key at once. Only provide
