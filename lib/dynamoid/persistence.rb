@@ -113,6 +113,10 @@ module Dynamoid
             true
           elsif value == 'f' || value == false
             false
+          elsif value == "1" || value == true
+            true
+          elsif value == "0" || value == false
+            false
           else
             raise ArgumentError, "Boolean column neither true nor false"
           end
@@ -252,7 +256,13 @@ module Dynamoid
       when :serialized
         options[:serializer] ? options[:serializer].dump(value) : value.to_yaml
       when :boolean
-        value.to_s[0]
+        if value.to_s == "1"
+          "t"
+        elsif value.to_s == "0"
+          "f"
+        else
+          value.to_s[0]
+        end
       else
         raise ArgumentError, "Unknown type #{options[:type]}"
       end
