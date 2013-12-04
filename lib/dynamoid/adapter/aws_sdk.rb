@@ -173,7 +173,7 @@ module Dynamoid
         conditions = options.delete(:conditions) || {}
         table = get_table(table_name)
         item = table.items.at(key, range_key)
-        item.attributes.update(conditions.merge(:return => :all_new), &block)
+        item.attributes.update({:return => :all_new}.merge(conditions), &block)
       rescue AWS::DynamoDB::Errors::ConditionalCheckFailedException
         raise Dynamoid::Errors::ConditionalCheckFailedException
       end
