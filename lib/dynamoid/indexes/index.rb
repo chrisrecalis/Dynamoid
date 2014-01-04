@@ -74,9 +74,18 @@ module Dynamoid #:nodoc:
           changed_attrs.each {|k, v| changed_hash[k.to_sym] = (v.first || v.last)}
         end
         attrs = attrs.send(:attributes) if attrs.respond_to?(:attributes)
+        source_attributes = self.source.attributes
         {}.tap do |hash|
           hash[:hash_value] = self.hash_keys.collect{|key| (if changed_hash[key]; changed_hash[key]; else attrs[key]; end)}.join('.')
-          hash[:range_value] = self.range_keys.inject(0.0) {|sum, key| sum + if changed_hash[key]; changed_hash[key].to_f; else attrs[key].to_f; end} if self.range_key?
+          # check to see if we have a string in the range_keys
+          # could make it simpler if the limit for a range_key is based on one attribute
+          if self.range_key?
+            if self.range_keys.select{|v| !source_attributes[v].nil? && source_attributes[v][:type] == :string}.any?
+              hash[:range_value] = self.range_keys.inject("") {|sum, key| sum + if changed_hash[key]; changed_hash[key].to_s; else attrs[key].to_s; end} 
+            else
+              hash[:range_value] = self.range_keys.inject(0.0) {|sum, key| sum + if changed_hash[key]; changed_hash[key].to_f; else attrs[key].to_f; end}
+            end
+          end
         end
       end
       
