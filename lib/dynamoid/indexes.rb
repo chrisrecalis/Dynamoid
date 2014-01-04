@@ -39,7 +39,7 @@ module Dynamoid #:nodoc:
       #
       # @since 0.2.0
       def create_indexes
-        source_attributes = self.class.attributes
+        source_attributes = self.base_class.attributes
         self.indexes.each do |name, index|
           opts = {:table_name => index.table_name, :id => :id}
           if index.range_key?
