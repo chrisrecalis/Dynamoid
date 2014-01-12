@@ -17,7 +17,6 @@ module Dynamoid #:nodoc:
     end
     
     module ClassMethods
-      
       # The call to create an index. Generates a new index with the specified options -- for more information, see Dynamoid::Indexes::Index.
       # This function also attempts to immediately create the indexing table if it does not exist already.
       #
@@ -41,13 +40,15 @@ module Dynamoid #:nodoc:
       def create_indexes
         source_attributes = self.base_class.attributes
         self.indexes.each do |name, index|
-          opts = {:table_name => index.table_name, :id => :id}
+          opts = {:table_name => index.table_name, :id => :id, :index => true}
           if index.range_key?
             if index.range_keys.select{|v| !source_attributes[v].nil? && source_attributes[v][:type] == :string}.any?
              opts[:range_key] = { :range => :string }
             else
               opts[:range_key] = { :range => :number }
             end
+          else
+            opts[:range_key] = nil
           end
           self.create_table(opts)
         end

@@ -21,6 +21,7 @@ module Dynamoid #:nodoc:
         elsif options[:range_key]
           @range_keys = sort(options[:range_key])
         end
+
         @hash_keys = sort(name)
         @name = sort([hash_keys, range_keys])
         
