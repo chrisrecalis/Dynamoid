@@ -40,7 +40,7 @@ module Dynamoid #:nodoc:
       def create_indexes
         source_attributes = self.base_class.attributes
         self.indexes.each do |name, index|
-          opts = {:table_name => index.table_name, :id => :id, :index => true}
+          opts = {:table_name => index.table_name, :id => :id}
           if index.range_key?
             if index.range_keys.select{|v| !source_attributes[v].nil? && source_attributes[v][:type] == :string}.any?
              opts[:range_key] = { :range => :string }
