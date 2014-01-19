@@ -232,6 +232,10 @@ module Dynamoid
        # existing = Dynamoid::Adapter.read(table_name, obj.hash_key, { :range_key => values[:range_value] })
         #ids = ((existing and existing[:ids]) or Set.new)
         #Dynamoid::Adapter.write(self.table_name, {:id => values[:hash_value], :ids => ids.merge([obj.hash_key]), :range => values[:range_value]})
+      elsif Dynamoid::Config.remove_empty_index?
+        key = opts.delete(:id)
+        add_block = Proc.new{|item| item.add(:ids => ["#{obj.hash_key}"])}
+        adapter.update_item(table_name, key, opts, &add_block)
       else
         key = opts.delete(:id)
         add_block = Proc.new{|item| item.add(:ids => ["#{obj.hash_key}"])}
@@ -245,6 +249,22 @@ module Dynamoid
         #existing = Dynamoid::Adapter.read(self.table_name, values[:hash_value], { :range_key => values[:range_value]})
         #return true unless existing && existing[:ids] && existing[:ids].include?(obj.hash_key)
         #Dynamoid::Adapter.write(self.table_name, {:id => values[:hash_value], :ids => (existing[:ids] - Set[obj.hash_key]), :range => values[:range_value]})
+      elsif Dynamoid::Config.remove_empty_index?
+        key = opts.delete(:id)
+        # do not lose our old options after we pass to update
+        old_opts = opts
+        delete_block = Proc.new{|item| item.delete(:ids => ["#{obj.hash_key}"])}
+        result = adapter.update_item(table_name, key, opts, &delete_block)
+        if result["ids"].nil?
+          begin
+            # the index is not holding anything we must delete it
+            # specifying unless exists makes sure we don't delete the index if another call added to the index 
+            adapter.delete_item(table_name,key, old_opts.merge({:unless_exists => :ids}))
+          rescue AWS::DynamoDB::Errors::ConditionalCheckFailedException
+            # we just return if the index is holding ids 
+            return
+          end
+        end
       else
         key = opts.delete(:id)
         delete_block = Proc.new{|item| item.delete(:ids => ["#{obj.hash_key}"])}
@@ -267,6 +287,7 @@ module Dynamoid
     #
     # @return [Array] an array of all matching items
     #
+    # this needs to respond to a batch size
     def query(table_name, opts = {})
       
       unless Dynamoid::Config.partitioning?

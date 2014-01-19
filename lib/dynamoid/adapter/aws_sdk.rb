@@ -109,6 +109,7 @@ module Dynamoid
       def create_table(table_name, key = :id, options = {})
         Dynamoid.logger.info "Creating #{table_name} table. This could take a while."
         options[:hash_key] ||= {key.to_sym => :string}
+        options[:range_key]
         read_capacity = options[:read_capacity] || Dynamoid::Config.read_capacity
         write_capacity = options[:write_capacity] || Dynamoid::Config.write_capacity
         table = @@connection.tables.create(table_name, read_capacity, write_capacity, options)
@@ -127,7 +128,7 @@ module Dynamoid
         range_key = options.delete(:range_key)
         table = get_table(table_name)
         result = table.items.at(key, range_key)
-        result.delete unless result.attributes.to_h.empty?
+        result.delete(options) unless result.attributes.to_h.empty?
         true
       end
 
