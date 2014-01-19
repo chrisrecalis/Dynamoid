@@ -252,14 +252,15 @@ module Dynamoid
       elsif Dynamoid::Config.remove_empty_index?
         key = opts.delete(:id)
         # do not lose our old options after we pass to update
-        old_opts = opts
+        old_opts = opts.clone
         delete_block = Proc.new{|item| item.delete(:ids => ["#{obj.hash_key}"])}
         result = adapter.update_item(table_name, key, opts, &delete_block)
         if result["ids"].nil?
           begin
             # the index is not holding anything we must delete it
-            # specifying unless exists makes sure we don't delete the index if another call added to the index 
+            # specifying unless exists makes sure we don't delete the index if another call added to the index
             adapter.delete_item(table_name,key, old_opts.merge({:unless_exists => :ids}))
+            Dynamoid.logger.info("Removing empty index at #{key}")
           rescue AWS::DynamoDB::Errors::ConditionalCheckFailedException
             # we just return if the index is holding ids 
             return
