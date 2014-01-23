@@ -255,7 +255,7 @@ module Dynamoid
         old_opts = opts.clone
         delete_block = Proc.new{|item| item.delete(:ids => ["#{obj.hash_key}"])}
         result = adapter.update_item(table_name, key, opts, &delete_block)
-        if result["ids"].nil?
+        if !result.nil? && result["ids"].nil?
           begin
             # the index is not holding anything we must delete it
             # specifying unless exists makes sure we don't delete the index if another call added to the index
@@ -293,7 +293,11 @@ module Dynamoid
       
       unless Dynamoid::Config.partitioning?
         #no paritioning? just pass to the standard query method
-        adapter.query(table_name, opts)
+        batch_size = opts.delete(:batch_size)
+        if batch_size
+        else
+          adapter.query(table_name, opts)
+        end
       else
         #get all the hash_values that could be possible
         ids = id_with_partitions(opts[:hash_value])
