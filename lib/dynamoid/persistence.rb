@@ -257,12 +257,11 @@ module Dynamoid
         options[:serializer] ? options[:serializer].dump(value) : value.to_yaml
       when :boolean
         if value.to_s == "1"
-          "t"
+          value = true
         elsif value.to_s == "0"
-          "f"
-        else
-          value.to_s[0]
+          value = false
         end
+        value.to_s[0]
       else
         raise ArgumentError, "Unknown type #{options[:type]}"
       end
