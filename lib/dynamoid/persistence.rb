@@ -166,7 +166,7 @@ module Dynamoid
 
         run_callbacks(:create) { persist(conditions) }
       else
-        persist
+        persist(options)
       end
 
       self
