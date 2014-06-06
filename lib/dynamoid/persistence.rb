@@ -226,6 +226,9 @@ module Dynamoid
         self.class.attributes.each do |attribute, options|
           hash[attribute] = dump_field(self.read_attribute(attribute), options)
         end
+        if self.options[:key] && self.attributes[self.options[:key]].nil?
+          hash[self.options[:key]] = self.hash_key
+        end
       end
     end
 
