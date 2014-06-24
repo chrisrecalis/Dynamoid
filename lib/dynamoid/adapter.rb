@@ -43,7 +43,6 @@ module Dynamoid
       else
         instrument_name = "dynamoid.#{method.to_s.split('_').collect(&:downcase).join('.')}"
       end
-      Dynamoid.logger.info(instrument_name)
       ActiveSupport::Notifications.instrument (instrument_name) do
         result = yield
         stop = Time.now
