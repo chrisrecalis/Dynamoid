@@ -22,7 +22,7 @@ module Dynamoid
       require "dynamoid/adapter/#{Dynamoid::Config.adapter}" unless Dynamoid::Adapter.const_defined?(Dynamoid::Config.adapter.camelcase)
       @adapter = Dynamoid::Adapter.const_get(Dynamoid::Config.adapter.camelcase)
       @adapter.connect! if @adapter.respond_to?(:connect!)
-      self.tables = benchmark('Cache Tables') {list_tables}
+      self.tables = benchmark('Cache Tables', nil) {list_tables}
     end
 
     # Shows how long it takes a method to run on the adapter. Useful for generating logged output.
@@ -34,10 +34,21 @@ module Dynamoid
     # @return the result of the yield
     #
     # @since 0.2.0
-    def benchmark(method, *args)
+    def benchmark(method, table_name,  *args)
       start = Time.now
-      result = yield
-      Dynamoid.logger.info "(#{((Time.now - start) * 1000.0).round(2)} ms) #{method.to_s.split('_').collect(&:upcase).join(' ')}#{ " - #{args.inspect}" unless args.nil? || args.empty? }"
+      stop = nil
+      result = nil
+      if table_name
+        instrument_name = "dynamoid.#{table_name}.#{method.to_s.split('_').collect(&:downcase).join('.')}"
+      else
+        instrument_name = "dynamoid.#{method.to_s.split('_').collect(&:downcase).join('.')}"
+      end
+      Dynamoid.logger.info(instrument_name)
+      ActiveSupport::Notifications.instrument (instrument_name) do
+        result = yield
+        stop = Time.now
+      end
+      Dynamoid.logger.info "(#{((stop - start) * 1000.0).round(2)} ms) #{method.to_s.split('_').collect(&:upcase).join(' ')}#{ " - #{args.inspect}" unless args.nil? || args.empty? }"
       return result
     end
 
@@ -55,7 +66,7 @@ module Dynamoid
         object[:id] = "#{object[:id]}.#{Random.rand(Dynamoid::Config.partition_size)}"
         object[:updated_at] = Time.now.to_f
       end
-      put_item(table, object, options)
+      put_item(table,table, object, options)
     end
 
     # Read one or many keys from the selected table. This method intelligently calls batch_get or get on the underlying adapter depending on
@@ -75,19 +86,19 @@ module Dynamoid
       if ids.respond_to?(:each)
         ids = ids.collect{|id| range_key ? [id, range_key] : id}
         if Dynamoid::Config.partitioning?
-          results = batch_get_item({table => id_with_partitions(ids)}, options)
+          results = batch_get_item(table, {table => id_with_partitions(ids)}, options)
           {table => result_for_partition(results[table],table)}
         else
-          batch_get_item({table => ids}, options)
+          batch_get_item(table,{table => ids}, options)
         end
       else
         if Dynamoid::Config.partitioning?
           ids = range_key ? [[ids, range_key]] : ids
-          results = batch_get_item({table => id_with_partitions(ids)}, options)
+          results = batch_get_item(table,{table => id_with_partitions(ids)}, options)
           result_for_partition(results[table],table).first
         else
           options[:range_key] = range_key if range_key
-          get_item(table, ids, options)
+          get_item(table, table, ids, options)
         end
       end
     end
@@ -109,16 +120,16 @@ module Dynamoid
         end
         
         if Dynamoid::Config.partitioning?
-          batch_delete_item(table => id_with_partitions(ids))
+          batch_delete_item(table, table => id_with_partitions(ids))
         else
-          batch_delete_item(table => ids)
+          batch_delete_item(table, table => ids)
         end
       else
         if Dynamoid::Config.partitioning?
           ids = range_key ? [[ids, range_key]] : ids
-          batch_delete_item(table => id_with_partitions(ids))
+          batch_delete_item(table, table => id_with_partitions(ids))
         else
-          delete_item(table, ids, options)
+          delete_item(table, table, ids, options)
         end
       end
     end
@@ -131,10 +142,10 @@ module Dynamoid
     # @since 0.2.0
     def scan(table, query, opts = {})
       if Dynamoid::Config.partitioning?
-        results = benchmark('Scan', table, query) {adapter.scan(table, query, opts)}
+        results = benchmark('Scan', table,  table, query) {adapter.scan(table, query, opts)}
         result_for_partition(results,table)
       else
-        benchmark('Scan', table, query) {adapter.scan(table, query, opts)}
+        benchmark('Scan', table,  table, query) {adapter.scan(table, query, opts)}
       end
     end
 
@@ -142,8 +153,8 @@ module Dynamoid
       # Method delegation with benchmark to the underlying adapter. Faster than relying on method_missing.
       #
       # @since 0.2.0
-      define_method(m) do |*args|
-        benchmark("#{m.to_s}", args) {adapter.send(m, *args)}
+      define_method(m) do |table_name = "dynamoid", *args|
+        benchmark("#{m.to_s}", table_name, args) {adapter.send(m, *args)}
       end
     end
 
@@ -220,7 +231,7 @@ module Dynamoid
     #
     # @since 0.2.0
     def method_missing(method, *args, &block)
-      return benchmark(method, *args) {adapter.send(method, *args, &block)} if @adapter.respond_to?(method)
+      return benchmark(method, "",  *args) {adapter.send(method, *args, &block)} if @adapter.respond_to?(method)
       super
     end
     # ADD the obj to the set of keys for a given index
