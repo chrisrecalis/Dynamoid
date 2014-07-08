@@ -43,7 +43,7 @@ module Dynamoid
 
         return true if table_exists?(options[:table_name])
 
-        Dynamoid::Adapter.tables << options[:table_name] if Dynamoid::Adapter.create_table(options[:table_name], options[:id], options)
+        Dynamoid::Adapter.tables << options[:table_name] if Dynamoid::Adapter.create_table(options[:table_name], options[:table_name], options[:id], options)
       end
 
       # Does a table with this name exist?
