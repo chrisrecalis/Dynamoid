@@ -244,11 +244,20 @@ module Dynamoid
         #Dynamoid::Adapter.write(self.table_name, {:id => values[:hash_value], :ids => ids.merge([obj.hash_key]), :range => values[:range_value]})
       elsif Dynamoid::Config.remove_empty_index?
         key = opts.delete(:id)
-        add_block = Proc.new{|item| item.add(:ids => ["#{obj.hash_key}"])}
+        if obj.range_value
+          add_block = Proc.new{|item| item.add(:ids => ["#{obj.hash_key}.#{obj.range_value}"])}
+        else
+          add_block = Proc.new{|item| item.add(:ids => ["#{obj.hash_key}"])}
+        end
+        
         adapter.update_item(table_name, key, opts, &add_block)
       else
         key = opts.delete(:id)
-        add_block = Proc.new{|item| item.add(:ids => ["#{obj.hash_key}"])}
+        if obj.range_value
+          add_block = Proc.new{|item| item.add(:ids => ["#{obj.hash_key}.#{obj.range_value}"])}
+        else
+          add_block = Proc.new{|item| item.add(:ids => ["#{obj.hash_key}"])}
+        end
         adapter.update_item(table_name, key, opts, &add_block)
       end
     end
@@ -263,7 +272,12 @@ module Dynamoid
         key = opts.delete(:id)
         # do not lose our old options after we pass to update
         old_opts = opts.clone
-        delete_block = Proc.new{|item| item.delete(:ids => ["#{obj.hash_key}"])}
+        if obj.range_value
+           delete_block = Proc.new{|item| item.delete(:ids => ["#{obj.hash_key}.#{obj.range_value}"])}
+        else
+           delete_block = Proc.new{|item| item.delete(:ids => ["#{obj.hash_key}"])}
+        end
+       
         result = adapter.update_item(table_name, key, opts, &delete_block)
         if !result.nil? && result["ids"].nil?
           begin
@@ -278,7 +292,11 @@ module Dynamoid
         end
       else
         key = opts.delete(:id)
-        delete_block = Proc.new{|item| item.delete(:ids => ["#{obj.hash_key}"])}
+        if obj.range_value
+           delete_block = Proc.new{|item| item.delete(:ids => ["#{obj.hash_key}.#{obj.range_value}"])}
+        else
+           delete_block = Proc.new{|item| item.delete(:ids => ["#{obj.hash_key}"])}
+        end
         adapter.update_item(table_name, key, opts, &delete_block)
       end
     end

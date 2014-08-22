@@ -175,16 +175,25 @@ module Dynamoid #:nodoc:
           [].to_enum
         else
           ids = ids.to_a
+          if source.range_key?
+            ids = ids.map{|id| id.split(".")}
+            if @start
+              ids = ids.drop_while { |id| id.first != @start.hash_key }.drop(1)
+            end
+            ids = ids.take(@limit) if @limit
+            source.find_all(ids, consistent_opts)
+          else
+            if @start
+              ids = ids.drop_while { |id| id != @start.hash_key }.drop(1)
+            end
 
-          if @start
-            ids = ids.drop_while { |id| id != @start.hash_key }.drop(1)
+            ids = ids.take(@limit) if @limit
+            source.find(ids, consistent_opts)
           end
-
-          ids = ids.take(@limit) if @limit
-          source.find(ids, consistent_opts)
         end
       end
 
+# THIS NEEDS TO BE CHANGED TO ACCEPT A RANGE KEY
       # Returns the Set of IDs from the index table.
       #
       # @return [Set] a Set containing the IDs from the index.
