@@ -193,7 +193,6 @@ module Dynamoid #:nodoc:
         end
       end
 
-# THIS NEEDS TO BE CHANGED TO ACCEPT A RANGE KEY
       # Returns the Set of IDs from the index table.
       #
       # @return [Set] a Set containing the IDs from the index.
