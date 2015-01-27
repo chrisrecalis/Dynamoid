@@ -205,9 +205,9 @@ module Dynamoid
     # Delete this object, but only after running callbacks for it.
     #
     # @since 0.2.0
-    def destroy
+    def destroy(opts = {})
       run_callbacks(:destroy) do
-        self.delete
+        self.delete(opts)
       end
       self
     end
@@ -215,9 +215,10 @@ module Dynamoid
     # Delete this object from the datastore and all indexes.
     #
     # @since 0.2.0
-    def delete
+    def delete(opts = {})
       delete_indexes
       options = range_key ? {:range_key => dump_field(self.read_attribute(range_key), self.class.attributes[range_key])} : {}
+      options.merge!(opts)
       Dynamoid::Adapter.delete(self.class.table_name, self.hash_key, options)
     end
 
