@@ -77,7 +77,7 @@ module Dynamoid
       result
     end
 
-    def delete
+    def delete(opts = {})
       return super if self.class.identity_map_off?
 
       identity_map.delete(identity_map_key)
