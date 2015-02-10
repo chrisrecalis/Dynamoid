@@ -84,7 +84,7 @@ module Dynamoid #:nodoc:
             if self.range_keys.select{|v| !source_attributes[v].nil? && source_attributes[v][:type] == :string}.any?
               hash[:range_value] = self.range_keys.inject("") {|sum, key| sum + if changed_hash[key]; changed_hash[key].to_s; else attrs[key].to_s; end} 
             else
-              hash[:range_value] = self.range_keys.inject(0.0) {|sum, key| sum + if changed_hash[key]; changed_hash[key].to_f; else attrs[key].to_f; end}
+              hash[:range_value] = self.range_keys.inject(0) {|sum, key| sum + if changed_hash[key]; changed_hash[key].to_i; else attrs[key].to_i; end}
             end
           end
         end
