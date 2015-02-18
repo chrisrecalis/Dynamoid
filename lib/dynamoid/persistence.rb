@@ -259,7 +259,11 @@ module Dynamoid
           Set[value]
         end
       when :datetime
-        value.to_time.to_i
+        if value.is_a?(Date) || value.is_a?(DateTime) || value.is_a?(Time)
+          value.to_time.to_i
+        else
+          Time.at(value).to_datetime.to_time.to_i
+        end
       when :serialized
         options[:serializer] ? options[:serializer].dump(value) : value.to_yaml
       when :boolean
