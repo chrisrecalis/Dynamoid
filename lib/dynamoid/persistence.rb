@@ -120,6 +120,17 @@ module Dynamoid
           else
             raise ArgumentError, "Boolean column neither true nor false"
           end
+        when :json
+          if value.is_a?(String)
+            begin
+              Dynamoid::Config.json_engine.load(value)
+            rescue
+              Dynamoid.logger.warn("Invalid json #{value}")
+              value
+            end
+          else
+            value
+          end
         else
           raise ArgumentError, "Unknown type #{options[:type]}"
         end
@@ -273,6 +284,8 @@ module Dynamoid
           value = false
         end
         value.to_s[0]
+      when :json
+        Dynamoid.json_engine.dump(value)
       else
         raise ArgumentError, "Unknown type #{options[:type]}"
       end

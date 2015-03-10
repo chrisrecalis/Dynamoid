@@ -42,6 +42,13 @@ module Dynamoid
       @logger ||= default_logger
     end
 
+    def default_json_engine
+      defined?(MultiJson) ? MultiJson : JSON
+    end
+
+    def json_engine
+      @json_engine ||= default_json_engine
+    end
     # If you want to, set the logger manually to any output you'd like. Or pass false or nil to disable logging entirely.
     #
     # @since 0.2.0

@@ -40,6 +40,10 @@ module Dynamoid
   def logger
     Dynamoid::Config.logger
   end
+
+  def json_engine
+    Dynamoid::Config.json_engine
+  end
   
   def included_models
     @included_models ||= []
