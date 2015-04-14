@@ -109,14 +109,10 @@ module Dynamoid
           end
         when :boolean
           # persisted as 't', but because undump is called during initialize it can come in as true
-          if value == 't' || value == true
-            true
-          elsif value == 'f' || value == false
+          if value == '0' || value == 0 || value == 'f' || value == false
             false
-          elsif value == "1" || value == true
+          elsif value == "1" || value == 1 || value == 't' || value == true
             true
-          elsif value == "0" || value == false
-            false
           else
             raise ArgumentError, "Boolean column neither true nor false"
           end
